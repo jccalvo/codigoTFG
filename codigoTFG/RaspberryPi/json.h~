@@ -1,0 +1,152 @@
+/**  @file json.h
+  *
+  *  @brief Fichero que contiene las cabeceras de las funciones necesarias para realizar la
+  *  solicitud de petición HTTP al servidor y la obtención del objeto JSON.
+  *
+  *  @author Juan Carlos Calvo Sansegundo.   
+  *  @date 26/10/2016.
+  */
+
+#ifndef JSON_H
+#define JSON_H
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <jansson.h>
+#include <curl/curl.h>
+
+/** 
+  * Factor para convertir la temperatura en un entero.
+  */
+
+#define FACT_CONV_TEMP 100  
+
+/** 
+  * Código que indica que la petición http ha sido satisfactoria.
+  */
+
+#define PET_HTTP_OK 200
+
+/** 
+  * Código que indica que la conexión con la url es satisfactoria.
+  */  
+
+#define CONEXION_OK 0   
+
+/**
+  * Tamaño máximo del buffer que almacena el objeto JSON.
+  */
+
+#define TAM_BUFFER (256*1024)  /**< Equivale a un tamaño de 256 KB */
+
+/**
+  * Tamaño máximo permitido del buffer que almacena la URL.
+  */
+
+#define URL_SIZE 256
+
+/**
+  * Formato de la URL del objeto JSON.
+  */
+
+#define URL_FORMAT   "http://visualizee.die.upm.es:8000/render?format=json&target=visualizee.greencpd.b039.rack.r0001.server.host2.temperature.ambient.1.1000&from=-1min"    
+
+
+/**  @struct escribir_resultado.
+  *  
+  *  @brief Estructura encargada de almacenar el resultado de la petición.
+  *
+  *  @author Juan Carlos Calvo Sansegundo.  
+  *  @date 20/10/2016.
+  */
+ 
+struct escribir_resultado{
+     char * datos;  /**< Puntero a un array que almacena la posicion de memoria.*/
+     int posicion;  /**< Indica la posición respecto al inicio.*/ 
+};
+
+
+/**  @struct dato_leido
+  *  
+  *  @brief Estructura encargada de almacenar un dato leído.
+  *
+  *  @author Juan Carlos Calvo Sansegundo.  
+  *  @date 20/10/2016.
+  */
+ 
+struct dato_leido{
+     int temp;      /**< Temperatura leída.*/
+     int instante;  /**< Instante de lectura de la temperatura.*/
+};
+
+/**  @fn char * crear_memoria(int tam_memoria).
+  *
+  *  @brief Esta función se encarga de crear una memoria dinámica donde
+  *  se almacena el objeto JSON.
+  *
+  *  @param tam_memoria. Tamaño de la memoria.
+  *  @return Un puntero de tipo char que almacena la dirección 
+  *  	     en la que se encuentra. En caso contrario devuelve null.
+  *
+  *  @author Juan Carlos Calvo Sansegundo.
+  *  @date 20/10/2016.
+  */
+
+char * crear_memoria(int tam_memoria);
+
+
+/**  @fn size_t escribir_respuesta(void *ptr, size_t size, size_t nmemb, void *stream, int tam_memoria).
+  *
+  *  @brief Esta función escribe el objeto json en la memoria y comprueba que el tamaño
+  *  de la memoria es suficiente.
+  *
+  *  @param ptr. Puntero de tipo void.
+  *  @param size. Estructura de tipo size_t que almacena el tamaño del objeto.
+  *  @param nmemb. Estructura de tipo size_t que contiene el número de posiciones del objeto.
+  *  @param stream. Puntero de tipo void que se refiere al flujo de datos a escribir.
+  *  @param tam_memoria. Tamaño de la memoria de almacenamiento.
+  *  @return Estructura de tipo size_t con el número de posiciones que ocupa el objeto  
+  *  	     En caso de no poder escribir, devuelve un 0.
+  *
+  *  @author Juan Carlos Calvo Sansegundo.  
+  *  @date 20/10/2016.
+  *
+  */
+
+size_t escribir_respuesta(void *ptr, size_t size, size_t nmemb, void *stream, int tam_memoria);
+
+
+/**  @fn char * solicitar_http(const char *url, int tamano_buffer).
+  *  
+  *  @brief Esta función se encarga de realizar la petición http al servidor y obtener el objeto JSON.
+  *
+  *  @param url. Puntero a un array de caracteres con la URL del objeto JSON.
+  *  @param tamano_buffer. Tamaño del buffer de almacenamiento.
+  *  @return Un puntero a la memoria donde se almacena el objeto JSON.
+  *  	     En caso contrario devuelve null.
+  *
+  *  @author Juan Carlos Calvo Sansegundo.  
+  *  @date 20/10/2016.
+  */
+
+char * solicitar_http(const char * url, int tamano_buffer);
+ 
+
+/**  @fn struct dato_leido * extraer_dato(int url_size, const char* url_format, int tamano_buffer).
+  *  
+  *  @brief Esta función se encarga de extraer la temperatura del objeto JSON.
+  *
+  *  @param url_size. Tamaño de la url del objeto JSON.
+  *  @param url_format. Puntero de tipo char con el formato de la url.
+  *  @param tamano_buffer. Tamaño del buffer para almacenar el objeto JSON.  
+  *  @return Un puntero a una estructura (definida como dato_leido) que contiene
+  *	     el valor de la temperatura y el instante de medida. Sino devuelve NULL.
+  *
+  *  @author Juan Carlos Calvo Sansegundo.  
+  *  @date 25/10/2016.
+  */
+
+struct dato_leido * extraer_dato(int url_size, const char * url_format, int tamano_buffer);
+
+#endif

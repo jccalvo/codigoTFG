@@ -1,0 +1,28 @@
+/** Fichero controlador.c
+  *
+  * Este fichero contiene las funciones necesarias para 
+  * realizar la comparación entre la señal de referencia
+  * y la señal de medida.
+  *
+  * Nombre: Juan Carlos Calvo Sansegundo.     Fecha: 24/02/2017.
+  *
+  */
+
+#include "controlador.h"
+
+/** Función calcular_diferencia.
+  *
+  * Esta función cálcula la diferencia entre la señal de referencia
+  * y la señal de medida.
+  * Toma como parámetros los valores de la señal medida y de referencia.
+  * Devuelve el resultado de la diferencia.
+  *
+  * Nombre: Juan Carlos Calvo Sansegundo.     Fecha: 24/02/2017.
+  *
+  */
+
+int calcular_diferencia(int valor_ref, int valor_med){
+
+  int valor_err = valor_ref - valor_med;
+  return valor_err;
+}

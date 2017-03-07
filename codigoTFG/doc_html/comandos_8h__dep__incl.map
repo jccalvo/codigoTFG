@@ -1,0 +1,6 @@
+<map id="codigoTFG/comandos.h" name="codigoTFG/comandos.h">
+<area shape="rect" id="node2" href="$comandos_8c.html" title="Fichero que contiene las funciones necesarias para que a partir de la señal obtenida a la salida del ..." alt="" coords="5,80,167,107"/>
+<area shape="rect" id="node3" href="$programa_8c.html" title="Fichero que contienr el programa principal. " alt="" coords="191,80,346,107"/>
+<area shape="rect" id="node4" href="$spi_8h.html" title="Fichero que contiene las cabecaeras de las funciones para usar la interfaz SPI de la raspberry PI y p..." alt="" coords="369,80,488,107"/>
+<area shape="rect" id="node5" href="$spi_8c.html" title="Fichero que contiene las funciones necesarias para usar la interfaz SPI de la raspberry PI y poder en..." alt="" coords="369,155,488,181"/>
+</map>

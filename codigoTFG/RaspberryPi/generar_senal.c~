@@ -1,0 +1,248 @@
+/**  Fichero generar_señal.c 
+  *  
+  *  Este fichero contiene las funciones necesarias para poder
+  *  generar una señal personalizada con la librería pigpio.
+  *
+  *  Nombre: Juan Carlos Calvo Sansegundo.   Fecha: 21/11/2016. 
+  *
+  */
+
+#include <pigpio.h>
+#include <stdio.h>
+#include <string.h>
+#include "comandos.h"
+
+#define PORT_SCLK 11
+#define PORT_MOSI 10 
+#define PORT_MISO  9
+#define PORT_CE	   8
+
+#define OUTPUT 1
+#define INPUT  0
+
+#define TAM_PAL_BITS 8
+
+
+int main(){
+
+     unsigned int t_bit;  // Periodo de bit (useg).
+     unsigned int f_bit;  // Frecuencia de bit (baudios).
+
+     unsigned int t_carrier;  // Periodo de portadora (useg).
+     unsigned int f_carrier;  // Frecuencia de portadora (Hz).
+
+     struct buf_salida * comando = crear_comando(0); 
+
+     if(comando ==NULL){
+	  printf("Error: Comando no disponible.\n");
+          return -1;
+      }
+
+      char* dato= comando->datos; 
+
+      t_bit = (comando->datos[7]<<8)+comando->datos[8];
+      f_bit = (int)((1.0/t_bit)*1000000.0);
+
+      t_carrier = comando->datos[9];
+      f_carrier =(int)((1.0/t_carrier)*1000000.0);
+
+      f_bit =2* f_carrier;
+
+      printf("Periodo de bit: %d useg.\n",t_bit);
+      printf("Frecuencia de bit: %d baudios.\n",f_bit);
+      printf("Periodo de portadora: %d useg.\n",t_carrier);
+      printf("Frecuencia de portadora: %d Hz\n",f_carrier);
+
+     // Creación del array que almacena la señal de salida modulada.
+
+     unsigned int nciclos = t_bit/t_carrier;
+     if(t_bit%t_carrier!=0){
+	  nciclos+=1;
+     }
+     unsigned int long_bit_modulado = 2*nciclos;
+     unsigned int long_comando = long_bit_modulado*(comando->datos[6])*TAM_PAL_BITS;
+     unsigned int bits_parada = long_comando/TAM_PAL_BITS;
+     unsigned int long_comando_bytes = bits_parada;
+     unsigned int despl_izq = long_comando%TAM_PAL_BITS;
+     unsigned int despl_der = TAM_PAL_BITS*long_comando_bytes - long_comando;
+     unsigned int bits_de_exceso = bits_parada + despl_der; 
+
+     if(despl_izq!=0){
+	long_comando_bytes += 1; 
+     }
+    
+      printf("Numero de ciclos: %d.\n",nciclos);
+      printf("Numero de palabras: %d\n",comando->datos[6]);
+      printf("Longitud del bit modulado: %d.\n",long_bit_modulado);
+      printf("Longitud del comando en bits: %d.\n",long_comando);
+      printf("Longitud del comando en bytes: %d.\n",long_comando_bytes);
+      printf("Desplz a la der en bits: %d.\n",despl_der);
+      printf("Desplz a la izq en bits: %d.\n",despl_izq);
+      printf("Bits en exceso: %d.\n",bits_de_exceso);
+      
+
+      int i = 0;
+      int j = 0;
+      int k = 0;
+      int marcador = 0;
+
+      unsigned char mascara = 0x80;
+      unsigned char buffer_tx[long_comando];
+
+      for(i=10;i<(comando->datos[6]*8 + 10);i++){
+        for(marcador=0; marcador<long_bit_modulado;marcador++){
+            if(comando->datos[i]=='0'){
+		buffer_tx[j]= buffer_tx[j] & (~mascara);
+            }else if(comando->datos[i] =='1'){
+                if(marcador%2 ==0 || marcador ==0){
+                     buffer_tx[j]= buffer_tx[j] | mascara;
+                }else{ 
+                     buffer_tx[j]= buffer_tx[j] & (~mascara);  
+                }
+            }else{
+            }
+
+            mascara = mascara >>1;
+            if(!mascara){   
+		mascara = 0x80;
+                j++;
+            }
+        }
+      } 
+
+      for(i=0;i<j;i++){
+	printf("Posición %d. 0x%x \n",i+1, buffer_tx[i]);
+
+      }
+      printf("Hecho\n");
+
+      // Hacer desplazamiento de bits
+
+      unsigned char a = 0;
+      unsigned char b = 0;
+
+     if(despl_der!=0){
+      	 for(i=long_comando_bytes -1; i>0; i--){
+	    a = buffer_tx[i] >>  despl_der;
+            b = buffer_tx[i-1] << despl_izq;
+            buffer_tx[i]= a|b;
+         } 
+         buffer_tx[0]=buffer_tx[0]>> despl_der;
+
+
+         for(i=0;i<j;i++){
+	    printf("Posición %d. 0x%x \n",i+1, buffer_tx[i]);
+         }
+         
+     }
+
+
+     int pal_inicio =long_comando_bytes-1;
+     int condicion = -1;
+
+     int p =0;     
+
+     while(k<long_comando/TAM_PAL_BITS){
+       while(p < 5){
+        for(i=pal_inicio;i>condicion;i--){
+            a = buffer_tx[i] >> 1;
+            b = buffer_tx[i-1] <<7;
+            buffer_tx[i]= a|b;
+        }
+        p++;
+        k++;
+      }
+        pal_inicio = pal_inicio -long_bit_modulado/TAM_PAL_BITS;
+        p=0;
+     }
+     buffer_tx[4] = 0x01;
+     for(i=0;i<j;i++){
+	    printf("Posición %d. 0x%x \n",i+1, buffer_tx[i]);
+     }
+ 
+        // Definición de señales para el protocolo SPI.
+
+        unsigned int SCLK;
+        unsigned int MOSI;
+        unsigned int MISO;
+        unsigned int CE;
+        unsigned int test_port;  // Testea la inicialización de los puertos.
+        unsigned int device;
+        unsigned int flags;
+
+         // Inicialización de la librería pigpio.
+
+        unsigned int library_version = gpioInitialise();
+   
+        if(library_version <0){
+	    printf("Error: Librería pigpio no inicializada correctamente.\n");
+	    return -1;
+        }	
+
+        // Definición del puerto de uso para la salida de la señal.
+
+        SCLK = gpioSetMode(PORT_SCLK,OUTPUT);
+        MOSI = gpioSetMode(PORT_MOSI,OUTPUT);
+        MISO = gpioSetMode(PORT_MISO,INPUT);
+        CE   = gpioSetMode(PORT_CE,OUTPUT);
+
+        test_port = (SCLK || MOSI || MISO || CE);
+    
+     
+
+        if(test_port !=0){
+	   printf("Error: Los puertos no están bien definidos\n");
+           if(SCLK!=0){
+	      printf("Error: No se ha definido el puerto SCLK.\n");
+           }
+
+           if(MOSI!=0){
+	      printf("Error: No se ha definido el puerto MOSI.\n");
+           }
+
+           if(MISO!=0){
+	      printf("Error: No se ha definido el puerto MISO.\n");
+           }
+     
+           if(CE!=0){
+	      printf("Error: No se ha definido el puerto CE.\n");
+           }
+           return -1;
+        }else{
+
+          printf("Puerto SCLK bien definido. Nº Puerto: %d y modo: %d\n",PORT_SCLK,gpioGetMode(PORT_SCLK));
+          printf("Puerto MOSI bien definido. Nº Puerto: %d y modo: %d\n",PORT_MOSI,gpioGetMode(PORT_MOSI));
+          printf("Puerto MISO bien definido. Nº Puerto: %d y modo: %d\n",PORT_MISO,gpioGetMode(PORT_MISO));
+          printf("Puerto CE   bien definido. Nº Puerto: %d y modo: %d\n",PORT_CE,gpioGetMode(PORT_CE));
+        }
+
+        // Definición e inicialización de la interfaz SPI.
+
+        flags = 1;
+
+        printf("Flags: 0x%x\n",flags);
+
+        device = spiOpen(INPUT,f_bit,flags);
+
+        if(device < 0){
+	    printf("Error: Dispositivo no creado correctamente.\n");
+	    return -1;
+        }
+        char * puntero = &buffer_tx[0];
+
+        while(1){
+          for(i=0;i<j;i++){
+	      spiWrite(device,(puntero),OUTPUT);
+              puntero ++;
+          }
+          if(i==j){
+             i=0;
+             puntero = &buffer_tx[0];
+          }
+        }
+
+        spiClose(device);
+        return 0;
+
+}
+

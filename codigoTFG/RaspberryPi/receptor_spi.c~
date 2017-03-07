@@ -1,0 +1,74 @@
+/** Fichero rececptor_spi.c
+  *
+  * Este fichero contiene las funciones necesarias para que el 
+  * receptor pueda recibir del emisor los datos enviados, a través 
+  * de la interfaz SPI.
+  *
+  * Nombre: Juan Carlos Calvo Sansegundo.   Fecha: 16/11/2016.
+  *
+  */
+
+
+#include <pigpio.h>
+
+#define INPUT 0;
+#define OUTPUT 1;
+
+#define SCLK 11;
+#define MOSI 10;
+#define MISO  9;
+#define CE    8;
+
+int main(){
+
+     // Inicialización de la librería pigpio.
+      
+     library_version = gpioInitialise();
+
+     if(library_version<0){
+	 printf("Error: Librería no inicializada correctamente.\n");
+         return -1;
+     }
+
+     // Definición del dispositivo auxiliar SPI (esclavo).
+     
+     struct bsc_xfer_t esclavo_spi;
+
+     // Definición de la palabra de control del spi.
+
+     esclavo_spi.control = 0x20B;  // 0010 0000 1011;   
+
+     
+     // Copia del dato recibido del memoria Rx FIFO al buffer;
+
+     char buf_lectura;
+
+     memcpy(&buf_lectura,esclavo_spi.rxBuf,1);   
+
+     unsigned int status =  bscXfer(&esclavo_spi);
+
+     if(status<0){
+	printf("Error: Problema con la recepción de datos.\n");
+        return -1;
+     }
+
+    // Cierre de la librería PIGPIO.
+
+     gpioTerminate();
+
+    // Escritura del dato recibido en un fichero.
+
+     FILE * f;
+
+     f = fopen("lectura.txt","w");
+
+     if(f == NULL){
+	printf("Error: No se puede crear fichero.\n");
+        return -1;
+     }
+
+     fprintf(f,"Dato recibido: %c.\n",buf_lectura);
+     fclose(f);
+
+     return 0;
+}

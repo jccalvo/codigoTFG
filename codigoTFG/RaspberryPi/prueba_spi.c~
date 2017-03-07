@@ -1,0 +1,140 @@
+/** Fichero prueba_spi.c
+  *
+  * Fichero que se encarga de probar la interfaz SPI y 
+  * realizar la simulación del envío de un comando por dicha interfaz.
+  *
+  * Nombre: Juan Carlos Calvo Sansegundo.   Fecha: 10/11/2016.
+  */  
+
+#include <pigpio.h>
+#include "comandos.h"
+
+#define SCLK_PORT 11
+#define MOSI_PORT 10
+#define MISO_PORT  9
+#define CE_PORT    8
+
+#define INPUT  0
+#define OUTPUT 1
+
+#define CHANNEL_SPI 0
+
+
+
+int main(){
+	
+      struct buf_salida * comando; // Estructura que almacena el comando.
+    
+      unsigned int t_bit;  // Periodo de bit (useg).
+      unsigned int f_bit;  // Frecuencia de bit (baudios).
+
+      unsigned int t_carrier;  // Periodo de portadora (useg).
+      unsigned int f_carrier;  // Frecuencia de portadora (Hz).
+   
+      unsigned int library_version;  // Versión de la librería GPIO.
+
+      unsigned int SCLK;             // Puerto SCLK SPI.
+      unsigned int MOSI;             // Puerto MOSI SPI.
+      unsigned int MISO;             // Puerto MISO SPI.
+      unsigned int CE;               // Puerto CE SPI.
+      unsigned int test_port;	     // Flag para comprobar si los puertos están bien.
+
+      unsigned int device_spi;       // Manejador de la interfaz SPI.
+      unsigned int flags = 0;      // Flags para spi;
+     
+
+      // Obtención del comando y extracción de parámetros.
+
+      comando = crear_comando(0);
+      if(comando ==NULL){
+	  printf("Error: Comando no disponible.\n");
+          return -1;
+      }
+
+      t_bit = (comando->datos[7]<<8)+comando->datos[8];
+      f_bit = (int)((1.0/t_bit)*1000000.0);
+
+      t_carrier = comando->datos[9];
+      f_carrier = (int)((1.0/t_carrier)*1000000.0);
+
+      printf("Periodo de bit: %d useg.\n",t_bit);
+      printf("Frecuencia de bit: %d baudios.\n",f_bit);
+      printf("Periodo de bit: %d useg.\n",t_carrier);
+      printf("Periodo de bit: %d Hz\n",f_carrier);
+
+
+      // Definición de uso de la librería pigpio.
+
+     library_version = gpioInitialise();
+     if(library_version < 0){
+	printf("Error: No se puede usar la librería PIGPIO.\n");
+        return -1;
+     }
+
+     // Definición de los puerto de la interfaz SPI.
+
+     SCLK = gpioSetMode(SCLK_PORT,OUTPUT);
+     MOSI = gpioSetMode(MOSI_PORT,OUTPUT);
+     MISO = gpioSetMode(MISO_PORT,INPUT);
+     CE   = gpioSetMode(CE_PORT,OUTPUT);
+
+     test_port = (SCLK || MOSI || MISO || CE);
+    
+     
+
+     if(test_port !=0){
+	printf("Error: Los puertos no están bien definidos\n");
+        if(SCLK!=0){
+	   printf("Error: No se ha definido el puerto SCLK.\n");
+        }
+
+        if(MOSI!=0){
+	    printf("Error: No se ha definido el puerto MOSI.\n");
+        }
+
+        if(MISO!=0){
+	    printf("Error: No se ha definido el puerto MISO.\n");
+        }
+     
+        if(CE!=0){
+	    printf("Error: No se ha definido el puerto CE.\n");
+        }
+        return -1;
+     }else{
+
+        printf("Puerto SCLK bien definido. Nº Puerto: %d y modo: %d\n",SCLK_PORT,gpioGetMode(SCLK_PORT));
+        printf("Puerto MOSI bien definido. Nº Puerto: %d y modo: %d\n",MOSI_PORT,gpioGetMode(MOSI_PORT));
+        printf("Puerto MISO bien definido. Nº Puerto: %d y modo: %d\n",MISO_PORT,gpioGetMode(MISO_PORT));
+        printf("Puerto CE   bien definido. Nº Puerto: %d y modo: %d\n",CE_PORT,gpioGetMode(CE_PORT));
+
+      }
+
+     // Obtención del manejador de la interfaz spi.
+
+     device_spi = spiOpen(CHANNEL_SPI,f_carrier,flags);
+
+     if(device_spi!=0){
+	printf("Error: Activación spi no realizada. Causa: %d\n",device_spi);
+        return -1;
+     }
+     printf("Correcto\n");
+
+     int a =0;
+
+     while(a<1000){
+
+        spiWrite(device_spi,comando[10],OUTPUT);
+        a++;
+     }
+     
+     device_spi =spiClose(device_spi);
+
+     if(device_spi!=0){
+	printf("Error: Cierre spi no realizada. Causa: %d\n",device_spi);
+        return -1;
+     }
+     gpioTerminate();
+
+     return 0;
+
+}
